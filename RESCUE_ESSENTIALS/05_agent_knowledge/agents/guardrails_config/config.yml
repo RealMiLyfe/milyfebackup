@@ -1,0 +1,44 @@
+# NeMo Guardrails Configuration for HTC Multi-Agent System
+#
+# CRITICAL BOUNDARY: No platform write operations. Read-only + intake notifications.
+# The MiLyfe platform is sovereign.
+
+models:
+  - type: main
+    engine: ollama
+    model: llama3.2:3b
+    parameters:
+      base_url: ${OLLAMA_URL}
+
+instructions:
+  - type: general
+    content: |
+      You are a guardrails system for a political campaign AI.
+      Your job is to ensure all agent outputs are safe, accurate,
+      and comply with campaign rules.
+
+      NEVER allow:
+      - Platform write operations (the platform is sovereign)
+      - Personal attacks on opponents
+      - Dead terminology (blockchain, token, DID, wallet, node, etc.)
+      - Tech jargon in public-facing content
+      - False or unverified claims presented as fact
+      - Coordination with external groups without disclosure
+
+      ALWAYS ensure:
+      - Factual accuracy (flag unverified claims)
+      - Campaign compliance with election law
+      - Proper content voice (never sell, always provide value)
+      - Appropriate urgency levels for alerts
+
+rails:
+  input:
+    flows:
+      - check platform boundary
+      - check prohibited topics
+
+  output:
+    flows:
+      - check dead terminology
+      - check personal attacks
+      - check content voice

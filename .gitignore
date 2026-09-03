@@ -1,0 +1,14 @@
+# Safety: never commit plaintext secrets or live databases.
+# Sensitive data lives ONLY inside the GPG-encrypted archive:
+#   SENSITIVE_secrets_and_databases.tar.gz.gpg
+*.env
+.env
+.env.local
+*.key
+*.pem
+*.p12
+*.keystore
+# allow example/template envs (no real secrets)
+!*.env.example
+!*.env.local.example
+!*.env.production.template

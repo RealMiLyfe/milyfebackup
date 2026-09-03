@@ -1,0 +1,95 @@
+# MiLyfe Local Development Stack
+# Runs all backend services needed for full integration testing.
+# Usage: docker compose up -d
+#
+# Services:
+# - Synapse (Matrix messaging)
+# - Ollama (local LLM)
+# - Temporal (workflow engine for MiAction)
+# - PostgreSQL (shared database)
+# - OpenFGA (relationship-based authorization for MiScope)
+
+version: '3.9'
+
+services:
+  # ─── PostgreSQL (shared) ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: milyfe
+      POSTGRES_PASSWORD: milyfe_dev
+      POSTGRES_DB: milyfe
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U milyfe"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Matrix Synapse (Messaging) ───────────────────────────────────────────
+  synapse:
+    image: matrixdotorg/synapse:latest
+    environment:
+      SYNAPSE_SERVER_NAME: milyfe.local
+      SYNAPSE_REPORT_STATS: "no"
+      SYNAPSE_CONFIG_DIR: /data
+    ports:
+      - "8008:8008"
+    volumes:
+      - synapse-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── Ollama (Local LLM) ──────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    # Pull a small model on first run:
+    # docker exec milyfe-ollama-1 ollama pull llama3.2:3b
+
+  # ─── Temporal (Workflow Engine for MiAction) ──────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: milyfe
+      POSTGRES_PWD: milyfe_dev
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "7233:7233"  # gRPC
+      - "8233:8233"  # Web UI
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── OpenFGA (Authorization for MiScope) ──────────────────────────────────
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: "postgres://milyfe:milyfe_dev@postgres:5432/milyfe?sslmode=disable"
+    ports:
+      - "8080:8080"  # HTTP
+      - "8081:8081"  # gRPC (note: conflicts with Expo on same port)
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  synapse-data:
+  ollama-models:

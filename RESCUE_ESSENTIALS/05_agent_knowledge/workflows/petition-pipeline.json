@@ -1,0 +1,84 @@
+{
+  "name": "Petition → CRM → Notification Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "petition-webhook",
+        "responseMode": "responseNode"
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://htc-campaign-api:8200/crm/contacts",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $json.signer_name }}" },
+            { "name": "email", "value": "={{ $json.email }}" },
+            { "name": "source", "value": "petition" },
+            { "name": "neighborhood", "value": "={{ $json.neighborhood }}" },
+            { "name": "tags", "value": "petition-signer" }
+          ]
+        }
+      },
+      "name": "Add to CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://htc-ntfy:80/chamber",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Title", "value": "New Petition Signature!" },
+            { "name": "Priority", "value": "default" },
+            { "name": "Tags", "value": "clipboard,white_check_mark" }
+          ]
+        },
+        "sendBody": true,
+        "body": "={{ $json.signer_name }} from {{ $json.neighborhood || 'Jacksonville' }} signed the petition."
+      },
+      "name": "Notify via ntfy",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.webhook_url || 'http://htc-mattermost:8065/hooks/d6ctfxpj77fjzdcyqhgdjmg5mo' }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "text", "value": ":memo: **New Petition Signature** — {{ $json.signer_name }} ({{ $json.neighborhood || 'no neighborhood' }}). Total: {{ $json.total_collected }}/1000" }
+          ]
+        }
+      },
+      "name": "Post to Mattermost",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          { "node": "Add to CRM", "type": "main", "index": 0 },
+          { "node": "Notify via ntfy", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Add to CRM": {
+      "main": [
+        [{ "node": "Post to Mattermost", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

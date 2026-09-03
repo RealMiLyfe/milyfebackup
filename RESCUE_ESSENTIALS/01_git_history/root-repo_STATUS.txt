@@ -1,0 +1,63 @@
+On branch master
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+	deleted:    BREACH_SCENARIO_TABLETOP_EXERCISE.md
+	deleted:    EXECUTION_SUMMARY.md
+	deleted:    GITHUB_SECURITY_BEST_PRACTICES.md
+	deleted:    OS_PLATFORM_SETUP_SUMMARY.md
+	deleted:    PUBLIC_VS_INTERNAL_INVENTORY.md
+	deleted:    SECURITY_REQUIREMENTS_PUBLIC_REPO.md
+	modified:   hyperbolic-time-chamber/dashboard-3d (modified content)
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.github/CODEOWNERS
+	.github/dependabot.yml
+	.gitignore
+	INDEX.md
+	NEXT_SESSION_PROMPT.md
+	docs/EXECUTION_SUMMARY.md
+	docs/NEXT_SESSION_PROMPT.md
+	docs/VIDEO_DEMO_SCRIPT.md
+	docs/planning/DESIGN_ENHANCEMENT_PLAN.md
+	docs/planning/DESIGN_ROOM_CONSENSUS.md
+	docs/planning/MiJustice_OS_Expansion_v2.md
+	docs/planning/MiJustice_OS_Expansion_v3.md
+	docs/planning/MiJustice_OS_Expansion_v4.md
+	docs/planning/MiJustice_OS_Master_Design.md
+	docs/planning/MiLyfe_Blueprint_Gap_and_New_Tech_Audit.md
+	docs/planning/MiLyfe_Build_Roadmap.md
+	docs/planning/MiLyfe_Community_Services_Design.md
+	docs/planning/MiLyfe_DEEP_BUILD_PLAN.md
+	docs/planning/MiLyfe_Expansion_Design.md
+	docs/planning/MiLyfe_Feature_Gap_vs_Reference_Platforms.md
+	docs/planning/MiLyfe_Founder_Story.md
+	docs/planning/MiLyfe_Interactive_Design_Spec.md
+	docs/planning/MiLyfe_MASTER_ROADMAP.md
+	docs/planning/MiLyfe_Repos_and_People_Services.md
+	docs/planning/MiLyfe_Sovereign_Infrastructure_Design.md
+	docs/planning/MiLyfe_Strategy_Private.md
+	docs/planning/MiLyfe_UI_UX_Blueprint.md
+	docs/planning/MiLyfe_Ultimate_Manual.md
+	docs/planning/PLAN_TO_FIX_BLOCKERS.md
+	docs/security/
+	docs/status/
+	fcc/
+	milyfe-app/
+	milyfe-platform/
+	public_html/.htaccess
+	public_html/about.html
+	public_html/contact.html
+	public_html/css/
+	public_html/get-involved.html
+	public_html/get-milyfe.html
+	public_html/illuminate.html
+	public_html/images/
+	public_html/index.html
+	public_html/js/main.js
+	public_html/platform.html
+	public_html/promise.html
+
+no changes added to commit (use "git add" and/or "git commit -a")

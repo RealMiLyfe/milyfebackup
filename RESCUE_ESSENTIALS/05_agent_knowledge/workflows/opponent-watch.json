@@ -1,0 +1,165 @@
+{
+  "name": "Opponent Watch — Continuous Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8,14,20 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Three Times Daily (8AM, 2PM, 8PM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "\"Donna Deegan\" Jacksonville"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing,duckduckgo,reddit"},
+            {"name": "time_range", "value": "day"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Deegan Mentions",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 200],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "Jacksonville city council vote agenda 2026"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing"},
+            {"name": "time_range", "value": "week"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Council Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "Jacksonville mayor 2027 candidate endorsement campaign"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing,duckduckgo"},
+            {"name": "time_range", "value": "week"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Campaign Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 600],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [],
+          "number": [
+            {
+              "value1": "={{ ($node['Deegan Mentions'].json.results || []).length + ($node['Council Activity'].json.results || []).length + ($node['Campaign Activity'].json.results || []).length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Any Results?",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:11434/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', prompt: `Opponent intelligence update. Summarize what matters for our campaign:\\n\\nDEEGAN MENTIONS:\\n${($node['Deegan Mentions'].json.results || []).slice(0,5).map(r => '- ' + (r.title || '')).join('\\n') || 'Nothing new.'}\\n\\nCOUNCIL ACTIVITY:\\n${($node['Council Activity'].json.results || []).slice(0,3).map(r => '- ' + (r.title || '')).join('\\n') || 'Nothing new.'}\\n\\nCAMPAIGN ACTIVITY:\\n${($node['Campaign Activity'].json.results || []).slice(0,3).map(r => '- ' + (r.title || '')).join('\\n') || 'Nothing new.'}\\n\\nFor each item: Is there an opportunity or vulnerability for us? What should we do about it? Be brief — 3 sentences max per item. Skip items with no strategic relevance.`, stream: false, options: { temperature: 0.5, num_predict: 300 } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Analyze Intel",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-chamber-bot:8066/event",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'opponent-watch', message: ':eye: **OPPONENT WATCH — ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}) + '**\\n\\n' + ($node['Analyze Intel'].json.response || 'No significant activity detected.'), priority: 'default' }) }}"
+      },
+      "name": "Post to Mattermost",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1140, 300],
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Three Times Daily (8AM, 2PM, 8PM)": {
+      "main": [[
+        {"node": "Deegan Mentions", "type": "main", "index": 0},
+        {"node": "Council Activity", "type": "main", "index": 0},
+        {"node": "Campaign Activity", "type": "main", "index": 0}
+      ]]
+    },
+    "Deegan Mentions": {
+      "main": [[
+        {"node": "Any Results?", "type": "main", "index": 0}
+      ]]
+    },
+    "Council Activity": {
+      "main": [[
+        {"node": "Any Results?", "type": "main", "index": 0}
+      ]]
+    },
+    "Campaign Activity": {
+      "main": [[
+        {"node": "Any Results?", "type": "main", "index": 0}
+      ]]
+    },
+    "Any Results?": {
+      "main": [[
+        {"node": "Analyze Intel", "type": "main", "index": 0}
+      ]]
+    },
+    "Analyze Intel": {
+      "main": [[
+        {"node": "Post to Mattermost", "type": "main", "index": 0}
+      ]]
+    }
+  }
+}

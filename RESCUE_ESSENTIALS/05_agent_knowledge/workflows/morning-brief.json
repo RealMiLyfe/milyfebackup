@@ -1,0 +1,164 @@
+{
+  "name": "Morning Brief — Daily Intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Every Morning 6AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "Jacksonville Florida mayor city council news"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing,duckduckgo"},
+            {"name": "time_range", "value": "day"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Search Jacksonville News",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 200],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "Donna Deegan Jacksonville mayor 2027"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing,duckduckgo"},
+            {"name": "time_range", "value": "day"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Search Deegan Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-searxng:8080/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "q", "value": "Jacksonville 2027 mayoral race candidates election"},
+            {"name": "format", "value": "json"},
+            {"name": "engines", "value": "google,bing,duckduckgo"},
+            {"name": "time_range", "value": "week"}
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Search All Candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 600],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:11434/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', prompt: `You are the campaign intelligence for MiLyfe, running for Mayor of Jacksonville 2027. Today is ${new Date().toISOString().split('T')[0]}. Petition deadline: December 14, 2026. Here is today's intelligence:\\n\\nJACKSONVILLE NEWS:\\n${($node['Search Jacksonville News'].json.results || []).slice(0,5).map(r => '- ' + (r.title || '') + ' (' + (r.url || '') + ')').join('\\n')}\\n\\nDEEGAN WATCH:\\n${($node['Search Deegan Activity'].json.results || []).slice(0,3).map(r => '- ' + (r.title || '')).join('\\n')}\\n\\nOTHER CANDIDATES:\\n${($node['Search All Candidates'].json.results || []).slice(0,3).map(r => '- ' + (r.title || '')).join('\\n')}\\n\\nGenerate a morning brief with:\\n1. TOP 3 STORIES requiring attention\\n2. OPPONENT WATCH: Any vulnerabilities or opportunities\\n3. TODAY'S #1 PRIORITY (one action)\\n4. RAPID RESPONSE NEEDED? Yes/No\\n\\nKeep under 250 words. Direct. Strategic. No fluff.`, stream: false, options: { temperature: 0.7, num_predict: 400 } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Generate AI Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-chamber-bot:8066/event",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'morning-brief', message: ':sunrise: **MORNING BRIEF — ' + new Date().toISOString().split('T')[0] + '**\\n\\n' + ($node['Generate AI Brief'].json.response || 'Brief generation failed — check Ollama.'), priority: 'default' }) }}"
+      },
+      "name": "Post to Mattermost",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [940, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-ntfy:80/chamber",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Title", "value": "Morning Brief"},
+            {"name": "Priority", "value": "default"},
+            {"name": "Tags", "value": "briefcase,sunrise"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ ($node['Generate AI Brief'].json.response || 'Check Mattermost for details.').substring(0, 500) }}"
+      },
+      "name": "Push to Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [940, 500],
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Every Morning 6AM": {
+      "main": [[
+        {"node": "Search Jacksonville News", "type": "main", "index": 0},
+        {"node": "Search Deegan Activity", "type": "main", "index": 0},
+        {"node": "Search All Candidates", "type": "main", "index": 0}
+      ]]
+    },
+    "Search Jacksonville News": {
+      "main": [[
+        {"node": "Generate AI Brief", "type": "main", "index": 0}
+      ]]
+    },
+    "Search Deegan Activity": {
+      "main": [[
+        {"node": "Generate AI Brief", "type": "main", "index": 0}
+      ]]
+    },
+    "Search All Candidates": {
+      "main": [[
+        {"node": "Generate AI Brief", "type": "main", "index": 0}
+      ]]
+    },
+    "Generate AI Brief": {
+      "main": [[
+        {"node": "Post to Mattermost", "type": "main", "index": 0},
+        {"node": "Push to Phone", "type": "main", "index": 0}
+      ]]
+    }
+  }
+}

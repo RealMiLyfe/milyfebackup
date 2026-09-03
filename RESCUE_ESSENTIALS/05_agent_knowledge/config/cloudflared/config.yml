@@ -1,0 +1,61 @@
+# ═══════════════════════════════════════════════════════════════
+# Cloudflare NAMED TUNNEL ingress — custom domains for the campaign
+#
+# This replaces the ephemeral *.trycloudflare.com quick tunnels for the
+# PUBLIC sites, so real custom domains resolve:
+#
+#   mijaxx.fun       → campaign site   (htc-mayor-site :80)
+#   get.milyfe.fun   → Get MiLyfe page (htc-mayor-site :80, routed by nginx Host)
+#
+# The internal ops services (campaign-api, listmonk, umami) can keep using
+# quick tunnels via run-tunnels.sh, OR be added here with their own hostnames.
+#
+# ── ONE-TIME SETUP (run on the host, see setup-named-tunnel.sh) ──
+#   cloudflared tunnel login
+#   cloudflared tunnel create milyfe-campaign
+#   cloudflared tunnel route dns milyfe-campaign mijaxx.fun
+#   cloudflared tunnel route dns milyfe-campaign get.milyfe.fun
+#   cloudflared tunnel route dns milyfe-campaign campaign-api.milyfe.fun
+#   cloudflared tunnel route dns milyfe-campaign analytics.milyfe.fun
+#   cloudflared tunnel route dns milyfe-campaign blog.milyfe.fun
+#   cloudflared tunnel route dns milyfe-campaign list.milyfe.fun
+#   # copy the generated <TUNNEL_ID>.json credentials next to this file
+#   cloudflared tunnel --config config/cloudflared/config.yml run
+# ═══════════════════════════════════════════════════════════════
+
+# Replace with your tunnel UUID from `cloudflared tunnel create`.
+# Tunnel: milyfe-campaign (created via API)
+tunnel: be3c2c88-43e6-4e9d-b2f2-b9af6404e474
+credentials-file: /home/milyfe/.cloudflared/milyfe-campaign.json
+
+# Route rules are evaluated top to bottom; last rule is the catch-all 404.
+ingress:
+  # Get MiLyfe landing page (get.milyfe.fun)
+  - hostname: get.milyfe.fun
+    service: http://127.0.0.1:8180
+
+  # Campaign API — stable endpoint for the mayor site's forms + live counter
+  - hostname: campaign-api.milyfe.fun
+    service: http://127.0.0.1:8200
+
+  # Umami analytics — stable endpoint (replaces ephemeral trycloudflare tunnel)
+  - hostname: analytics.milyfe.fun
+    service: http://127.0.0.1:3001
+
+  # Ghost blog — stable endpoint for the campaign site's blog feed
+  - hostname: blog.milyfe.fun
+    service: http://127.0.0.1:2370
+
+  # Listmonk — stable endpoint for email opt-in subscriptions
+  - hostname: list.milyfe.fun
+    service: http://127.0.0.1:9001
+
+  # Campaign site (mijaxx.fun)
+  - hostname: mijaxx.fun
+    service: http://127.0.0.1:8180
+
+  - hostname: www.mijaxx.fun
+    service: http://127.0.0.1:8180
+
+  # Required catch-all
+  - service: http_status:404

@@ -1,0 +1,48 @@
+# Output rails — filter agent responses
+
+define flow check dead terminology
+  """Flag responses containing dead/prohibited terminology."""
+  bot said something with dead terminology
+  bot rephrase without dead terminology
+
+define flow check personal attacks
+  """Block responses containing personal attacks."""
+  bot said something with personal attacks
+  bot rephrase to focus on accountability
+
+define flow check content voice
+  """Ensure public-facing content follows the voice guide."""
+  bot said something that sounds like selling
+  bot rephrase to provide value instead
+
+# ─── Bot output intent definitions ────────────────────────────
+
+define bot said something with dead terminology
+  "...blockchain..." or "...token..." or "...DID..."
+  "...wallet..." or "...node..." or "...smart contract..."
+  "...web3..." or "...crypto..." or "...disruptive..."
+  "...innovative..." or "...revolutionary..." or "...game-changing..."
+  "...MiJaxx..." or "...cOS..."
+
+define bot said something with personal attacks
+  "...is a terrible person..."
+  "...is incompetent..."
+  "...is corrupt..."
+  "...their family..."
+  "...personally disgusting..."
+
+define bot said something that sounds like selling
+  "...sign up now..." or "...buy..." or "...subscribe..."
+  "...don't miss out..." or "...limited time..."
+  "...exclusive offer..." or "...act now..."
+
+# ─── Corrective responses ─────────────────────────────────────
+
+define bot rephrase without dead terminology
+  "[Rephrasing to remove prohibited terminology — using human-language equivalents per the content voice guide.]"
+
+define bot rephrase to focus on accountability
+  "[Rephrasing to focus on record-based accountability — what they promised vs. what they delivered, backed by public data.]"
+
+define bot rephrase to provide value instead
+  "[Rephrasing to provide value — telling the story, sharing the proof, inviting participation. Never selling.]"

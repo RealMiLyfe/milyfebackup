@@ -1,0 +1,110 @@
+{
+  "name": "Citizen Intake — Poll milyfe.fun Signups",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "url": "https://zoallvovubchvxllglbs.supabase.co/rest/v1/profiles",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "select", "value": "id,display_name,neighborhood,voter_status,created_at"},
+            {"name": "onboarding_complete", "value": "eq.true"},
+            {"name": "created_at", "value": "gte.{{ $now.minus(15, 'minutes').toISO() }}"},
+            {"name": "order", "value": "created_at.desc"},
+            {"name": "limit", "value": "20"}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "apikey", "value": "{{ $env.SUPABASE_ANON_KEY }}"},
+            {"name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"}
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "name": "Fetch New Citizens",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [440, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Any New?",
+      "type": "n8n-nodes-base.if",
+      "position": [660, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-campaign-api:8200/intake/platform",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "x-intake-secret", "value": "milyfe-intake-2026"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ user_id: $json.id, display_name: $json.display_name, neighborhood: $json.neighborhood, voter_status: $json.voter_status || 'unknown', source: 'platform-poll' }) }}"
+      },
+      "name": "Send to War Room",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [880, 300],
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [[
+        {"node": "Fetch New Citizens", "type": "main", "index": 0}
+      ]]
+    },
+    "Fetch New Citizens": {
+      "main": [[
+        {"node": "Any New?", "type": "main", "index": 0}
+      ]]
+    },
+    "Any New?": {
+      "main": [[
+        {"node": "Send to War Room", "type": "main", "index": 0}
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "notes": "Polls milyfe.fun Supabase every 15 minutes for new citizens who completed onboarding. Sends each to the war room CRM via /intake/platform. Deduplication handled server-side."
+  }
+}

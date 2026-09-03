@@ -1,0 +1,553 @@
+name: hyperbolic-time-chamber
+
+networks:
+  chamber:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  mattermost_data:
+  mattermost_config:
+  n8n_data:
+  ntfy_data:
+  ghost_data:
+  ghost_db_data:
+  mastodon_data:
+  listmonk_data:
+  owncast_data:
+  uptime_data:
+  postiz_data:
+  meilisearch_data:
+  neo4j_data:
+
+services:
+
+  # ═══════════════════════════════════════════════════════════════
+  # FOUNDATION
+  # ═══════════════════════════════════════════════════════════════
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: htc-postgres
+    restart: unless-stopped
+    networks: [chamber]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: htc-redis
+    restart: unless-stopped
+    networks: [chamber]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════════
+  # OPS HUB — Where everything reports
+  # ═══════════════════════════════════════════════════════════════
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+    container_name: htc-mattermost
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8065:8065"
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable
+      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+      # ── Single-owner lockdown: no public signup, no open server ──
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
+      MM_TEAMSETTINGS_ENABLEUSERCREATION: "false"
+      MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL: "false"
+      MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL: "true"
+      MM_EMAILSETTINGS_ENABLESIGNINWITHUSERNAME: "true"
+      MM_PLUGINSETTINGS_ENABLEUPLOADS: "true"
+    volumes:
+      - mattermost_data:/mattermost/data
+      - mattermost_config:/mattermost/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ═══════════════════════════════════════════════════════════════
+  # AI LAYER — The brain
+  # ═══════════════════════════════════════════════════════════════
+
+  # AI inference uses cloud APIs (Groq, Gemini, NVIDIA NIM, Cerebras).
+  # No local GPU required. Ollama is optional for dev/offline use only.
+  # RAG is built into the campaign-api using local knowledge files + cloud LLMs.
+
+  # ═══════════════════════════════════════════════════════════════
+  # INTELLIGENCE — Research and automation
+  # ═══════════════════════════════════════════════════════════════
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: htc-searxng
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8080
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: htc-n8n
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_DATABASE: n8n
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: htc-ntfy
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:9091:80"
+    volumes:
+      - ntfy_data:/var/lib/ntfy
+    command: serve --base-url http://localhost:9091
+
+  # ═══════════════════════════════════════════════════════════════
+  # CONTENT — Publishing the story
+  # ═══════════════════════════════════════════════════════════════
+
+  ghost-db:
+    image: mysql:8.0
+    container_name: htc-ghost-db
+    restart: unless-stopped
+    networks: [chamber]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${GHOST_DB_ROOT_PASSWORD}
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ${GHOST_DB_PASSWORD}
+      MYSQL_DATABASE: ghost
+    volumes:
+      - ghost_db_data:/var/lib/mysql
+
+  ghost:
+    image: ghost:5-alpine
+    container_name: htc-ghost
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:2370:2368"
+    environment:
+      url: http://localhost:2370
+      database__client: mysql
+      database__connection__host: ghost-db
+      database__connection__user: ghost
+      database__connection__password: ${GHOST_DB_PASSWORD}
+      database__connection__database: ghost
+    volumes:
+      - ghost_data:/var/lib/ghost/content
+    depends_on:
+      - ghost-db
+
+  mastodon:
+    image: ghcr.io/mastodon/mastodon:latest
+    container_name: htc-mastodon
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:3004:3000"
+    command: >
+      bash -c "
+        bundle exec rails db:migrate 2>/dev/null || true &&
+        bundle exec rails s -p 3000 -b 0.0.0.0"
+    environment:
+      LOCAL_DOMAIN: localhost
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${MASTODON_SECRET_KEY}
+      OTP_SECRET: ${MASTODON_OTP_SECRET}
+      ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${MASTODON_AR_DETERMINISTIC_KEY}
+      ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${MASTODON_AR_SALT}
+      ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${MASTODON_AR_PRIMARY_KEY}
+      DB_HOST: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_NAME: mastodon
+      DB_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SINGLE_USER_MODE: "true"
+      RAILS_LOG_LEVEL: warn
+    volumes:
+      - mastodon_data:/mastodon/public/system
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mastodon-sidekiq:
+    image: ghcr.io/mastodon/mastodon:latest
+    container_name: htc-mastodon-worker
+    restart: unless-stopped
+    networks: [chamber]
+    command: bundle exec sidekiq
+    environment:
+      LOCAL_DOMAIN: localhost
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${MASTODON_SECRET_KEY}
+      OTP_SECRET: ${MASTODON_OTP_SECRET}
+      ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${MASTODON_AR_DETERMINISTIC_KEY}
+      ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${MASTODON_AR_SALT}
+      ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${MASTODON_AR_PRIMARY_KEY}
+      DB_HOST: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_NAME: mastodon
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      - mastodon
+      - redis
+      - postgres
+
+  listmonk:
+    image: listmonk/listmonk:latest
+    container_name: htc-listmonk
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:9001:9000"
+    environment:
+      LISTMONK_app__address: "0.0.0.0:9000"
+      LISTMONK_db__host: postgres
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__user: ${POSTGRES_USER}
+      LISTMONK_db__password: ${POSTGRES_PASSWORD}
+      LISTMONK_db__database: listmonk
+      # Super-admin credentials (v6.2 auto-provisions/updates from these).
+      # No hardcoded defaults — values live only in .env (fail closed).
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:?set LISTMONK_ADMIN_USER in .env}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASS:?set LISTMONK_ADMIN_PASS in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ═══════════════════════════════════════════════════════════════
+  # SOCIAL PUBLISHING — Postiz (multi-platform scheduler)
+  # ═══════════════════════════════════════════════════════════════
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: htc-temporal
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:7233:7233"
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ./config/temporal/development-sql.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: htc-postiz
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:5200:5000"
+    environment:
+      # Core
+      MAIN_URL: http://localhost:5200
+      FRONTEND_URL: http://localhost:5200
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:5200/api
+      JWT_SECRET: ${POSTIZ_JWT_SECRET}
+      # Database (shared PostgreSQL)
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postiz
+      # Redis
+      REDIS_URL: redis://redis:6379/2
+      # AI Integration (uses our Groq key)
+      OPENAI_API_KEY: ${GROQ_API_KEY}
+      # Temporal
+      TEMPORAL_ADDRESS: temporal:7233
+      # Disable telemetry
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - postiz_data:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+
+  # ═══════════════════════════════════════════════════════════════
+  # LIVE — Direct to the people
+  # ═══════════════════════════════════════════════════════════════
+
+  owncast:
+    image: gabekangas/owncast:latest
+    container_name: htc-owncast
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8095:8080"
+      - "127.0.0.1:1935:1935"
+    volumes:
+      - owncast_data:/app/data
+
+  # ═══════════════════════════════════════════════════════════════
+  # SEARCH & GRAPH — Intelligence indexing
+  # ═══════════════════════════════════════════════════════════════
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: htc-meilisearch
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:7701:7700"
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-milyfe-search-2026}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch_data:/meili_data
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: htc-neo4j
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+
+  # ═══════════════════════════════════════════════════════════════
+  # MONITORING — Keeps itself alive
+  # ═══════════════════════════════════════════════════════════════
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: htc-uptime
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:3012:3001"
+    volumes:
+      - uptime_data:/app/data
+
+  # ═══════════════════════════════════════════════════════════════
+  # MAYOR SITE — Static campaign website (mijaxx.fun)
+  # ═══════════════════════════════════════════════════════════════
+
+  mayor-site:
+    image: nginx:alpine
+    container_name: htc-mayor-site
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8180:80"
+    volumes:
+      - ../public_html:/usr/share/nginx/html:ro
+      # Host-based routing: mijaxx.fun + get.milyfe.fun (replaces default server block)
+      - ./config/nginx/mayor-site.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # ═══════════════════════════════════════════════════════════════
+  # PROXY — Front door
+  # ═══════════════════════════════════════════════════════════════
+
+  mastodon-proxy:
+    image: nginx:alpine
+    container_name: htc-mastodon-proxy
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:3005:443"
+    volumes:
+      - ./config/nginx/mastodon-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - mastodon
+
+  traefik:
+    image: traefik:latest
+    container_name: htc-traefik
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:8888:8080"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=htc_network"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # ═══════════════════════════════════════════════════════════════
+  # CAMPAIGN OPS — Custom services (built in later tasks)
+  # ═══════════════════════════════════════════════════════════════
+
+  campaign-api:
+    build:
+      context: ./services/campaign-api
+      dockerfile: Dockerfile
+    container_name: htc-campaign-api
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8200:8200"
+    environment:
+      DATABASE_PATH: /app/data/campaign.db
+      KNOWLEDGE_PATH: /app/knowledge
+      OLLAMA_URL: ${OLLAMA_URL:-disabled}
+      MATTERMOST_WEBHOOK_OPS: ${MM_WEBHOOK_OPS}
+      MATTERMOST_WEBHOOK_PETITION: ${MM_WEBHOOK_PETITION}
+      MATTERMOST_WEBHOOK_COMPLIANCE: ${MM_WEBHOOK_COMPLIANCE}
+      CHAMBER_BOT_URL: http://htc-agents:8067
+      NTFY_URL: http://htc-ntfy:80
+      INTAKE_SECRET: ${INTAKE_SECRET}
+      GHOST_URL: http://htc-ghost:2368
+      GHOST_ADMIN_API_KEY: ${GHOST_ADMIN_API_KEY}
+      MASTODON_API_URL: ${MASTODON_API_URL}
+      MASTODON_ACCESS_TOKEN: ${MASTODON_ACCESS_TOKEN}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      PETITION_TARGET: ${PETITION_TARGET}
+      PETITION_DEADLINE: ${PETITION_DEADLINE}
+      CAMPAIGN_API_TOKEN: ${CAMPAIGN_API_TOKEN:-htc-ops-2026-secure}
+      LISTMONK_URL: http://htc-listmonk:9000
+      LISTMONK_USER: admin
+      LISTMONK_PASS: ${LISTMONK_ADMIN_PASS:?set LISTMONK_ADMIN_PASS in .env}
+      LISTMONK_LIST_ID: "3"
+      DATE_QUALIFYING_START: ${DATE_QUALIFYING_START}
+      DATE_PRIMARY: ${DATE_PRIMARY}
+      DATE_GENERAL: ${DATE_GENERAL}
+      DATE_OFFICE: ${DATE_OFFICE}
+    volumes:
+      - ./data:/app/data
+      - ./knowledge:/app/knowledge:ro
+      - ./brain:/app/brain:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mattermost
+      - ntfy
+
+  # ═══════════════════════════════════════════════════════════════
+  # AI AGENTS — Multi-agent campaign intelligence (replaces chamber-bot)
+  # ═══════════════════════════════════════════════════════════════
+
+  htc-agents:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    container_name: htc-agents
+    restart: unless-stopped
+    networks: [chamber]
+    ports:
+      - "127.0.0.1:8067:8067"
+    environment:
+      # LLM Providers (resilient rotation pool + local anchor)
+      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      # Mattermost
+      MATTERMOST_URL: http://mattermost:8065
+      MATTERMOST_BOT_TOKEN: ${MM_BOT_TOKEN}
+      MATTERMOST_TEAM: campaign
+      MATTERMOST_USERNAME: milyfe
+      MATTERMOST_PASSWORD: ${MATTERMOST_PASSWORD}
+      # Memory
+      CHROMA_PERSIST_DIR: /app/data/chromadb
+      REDIS_URL: redis://redis:6379/1
+      # Services
+      CAMPAIGN_API_URL: http://htc-campaign-api:8200
+      SEARXNG_URL: http://htc-searxng:8080
+      NTFY_URL: http://htc-ntfy:80
+      NTFY_TOPIC: chamber
+      # Supabase (read-only)
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      # Webhooks
+      MM_WEBHOOK_OPS: ${MM_WEBHOOK_OPS}
+      MM_WEBHOOK_BRIEF: ${MM_WEBHOOK_BRIEF}
+      MM_WEBHOOK_OPPONENT: ${MM_WEBHOOK_OPPONENT}
+      MM_WEBHOOK_CONTENT: ${MM_WEBHOOK_CONTENT}
+      MM_WEBHOOK_PETITION: ${MM_WEBHOOK_PETITION}
+      MM_WEBHOOK_COMPLIANCE: ${MM_WEBHOOK_COMPLIANCE}
+      MM_WEBHOOK_HEALTH: ${MM_WEBHOOK_HEALTH}
+      # System
+      LOG_LEVEL: INFO
+      ENVIRONMENT: production
+      KNOWLEDGE_PATH: /app/knowledge
+      BRAIN_PATH: /app/brain
+    volumes:
+      - ./data/agents:/app/data
+      - ./knowledge:/app/knowledge:ro
+      - ./brain:/app/brain:ro
+      - ./agents/guardrails_config:/app/guardrails_config:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mattermost
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8067/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3

@@ -1,0 +1,127 @@
+{
+  "name": "Content Pipeline — One Approval, Everywhere",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook — Publish Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "typeVersion": 2,
+      "webhookId": "content-publish"
+    },
+    {
+      "parameters": {
+        "url": "http://htc-ghost:2368/ghost/api/admin/posts/",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ posts: [{ title: $json.title, html: '<p>' + $json.body.replace(/\\n\\n/g, '</p><p>').replace(/\\n/g, '<br>') + '</p>', status: 'published', tags: ($json.tags || ['campaign']) }] }) }}"
+      },
+      "name": "Publish to Ghost",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [480, 200],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-mastodon:3000/api/v1/statuses",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "Bearer {{ $env.MASTODON_ACCESS_TOKEN }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: ($json.social_text || $json.title + '\\n\\n' + ($json.body || '').substring(0, 400) + '...\\n\\nRead more: ' + ($json.url || 'http://localhost:2370')), visibility: 'public' }) }}"
+      },
+      "name": "Post to Mastodon",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [480, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-campaign-api:8200/content/published",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, platform: 'ghost+mastodon', url: $json.url || '' }) }}"
+      },
+      "name": "Track in Campaign API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [720, 300],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "http://htc-chamber-bot:8066/event",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'content', message: ':white_check_mark: **Published:** ' + $json.title + ' → Ghost + Mastodon', priority: 'default' }) }}"
+      },
+      "name": "Notify Mattermost",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [720, 500],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, title: $json.title, published_to: ['ghost', 'mastodon'], tracked: true }) }}"
+      },
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [940, 300],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook — Publish Trigger": {
+      "main": [[
+        {"node": "Publish to Ghost", "type": "main", "index": 0},
+        {"node": "Post to Mastodon", "type": "main", "index": 0}
+      ]]
+    },
+    "Publish to Ghost": {
+      "main": [[
+        {"node": "Track in Campaign API", "type": "main", "index": 0}
+      ]]
+    },
+    "Post to Mastodon": {
+      "main": [[
+        {"node": "Notify Mattermost", "type": "main", "index": 0}
+      ]]
+    },
+    "Track in Campaign API": {
+      "main": [[
+        {"node": "Respond Success", "type": "main", "index": 0}
+      ]]
+    },
+    "Notify Mattermost": {
+      "main": [[
+        {"node": "Respond Success", "type": "main", "index": 0}
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "notes": "POST to /webhook/publish with JSON body: { title, body, social_text (optional), tags (optional), url (optional) }. One request publishes to Ghost blog + Mastodon social + tracks in Campaign API + notifies Mattermost #content."
+  }
+}

@@ -1,0 +1,46 @@
+[project]
+name = "htc-agents"
+version = "0.1.0"
+description = "Multi-agent system for the Hyperbolic Time Chamber — Campaign Intelligence"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph==0.4.1",
+    "langchain==0.3.25",
+    "langchain-core==0.3.59",
+    "langchain-community==0.3.24",
+    "langchain-google-genai==2.1.4",
+    "langchain-groq==0.3.2",
+    "langchain-nvidia-ai-endpoints==0.3.10",
+    "langchain-anthropic==0.3.12",
+    "langchain-ollama==0.3.3",
+    "mem0ai==0.1.43",
+    "chromadb==1.0.7",
+    "nemoguardrails==0.11.0",
+    "mmpy-bot==2.1.4",
+    "httpx==0.28.1",
+    "pydantic==2.11.3",
+    "pydantic-settings==2.9.1",
+    "python-dotenv==1.1.0",
+    "uvicorn==0.34.2",
+    "fastapi==0.115.12",
+    "redis==5.3.0",
+    "asyncpg==0.30.0",
+    "structlog==25.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-asyncio==0.25.3",
+    "promptfoo==0.1.0",
+]
+
+[project.scripts]
+htc-agents = "htc_agents.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["htc_agents"]

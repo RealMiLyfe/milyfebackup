@@ -1,0 +1,9 @@
+# Temporal dynamic config (SQL/Postgres dev profile).
+# Mounted into the auto-setup container at config/dynamicconfig/development-sql.yaml.
+# Minimal but valid: enables reasonable defaults for a single-node dev/ops deployment.
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+    constraints: {}

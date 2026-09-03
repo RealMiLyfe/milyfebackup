@@ -1,0 +1,32 @@
+adc7ec2 infra: add provision-tunnel-dns.sh — one-command CNAME setup for tunnel hostnames
+9f7789a infra(tunnel): add blog.milyfe.fun + list.milyfe.fun ingress (Ghost :2370, Listmonk :9001)
+42ab798 security: wire Listmonk super-admin creds via env (fail-closed), rotate off leaked password
+71e9443 security: purge all hardcoded secret defaults from time-chamber
+9ef3b92 fix: stable prod endpoints for campaign site + drop leaked Listmonk default password
+55929cd docs: add MiJustice build status
+0eb1708 ci: fix root workflow to target milyfe-platform with npm (Phase 1)
+68bac81 fix(agents): resilient multi-provider LLM pool + live health monitor
+5b9af13 docs: align root license to AGPL-3.0; fix stray primary date to Mar 9
+036841c security: lock time chamber Mattermost to single owner
+8b6d9d3 Fix: SPA fallback so Time Chamber deep links serve the app shell
+fcacd6a Phase H: Produce pipeline + cleanup + integrate (build clean, static refreshed)
+ffca2c2 Phase G: Watch (public-record-only) + Machine (engine room)
+5b9290f Phase F: Coalition workspace (audience = Coalition)
+57bc3e4 Phase E: Citizen Voice loop — input intake + you-said/we-did
+f9946ad Phase D: transparency surfaces — Public Ledger, Receipts, Open/Held register
+eeddfab Phase C: Today (priority stack) + Decide (make-public Level-3 gate)
+778c35e Phase B: MiLyfe-brand tokens + shell for five destinations
+c91e3e4 Phase A: Time Chamber backend — audience-labeled records + govern-in-public tools
+4c67384 Time Chamber OS build plan: govern-in-public cockpit on MiLyfe's own laws
+03b83bc Fix kernel Redis loop-binding across threads + refresh dashboard static
+2bda9b1 Phase 5: OS shell — calm nav (Pulse/Activity/Decisions/Command), live badge, mobile tab bar
+578325c Phase 4: Command surface — conversation to steer, cards to confirm
+fbc8637 Phase 3: Decisions — approval queue as a first-class surface
+abef32d Phase 2: Activity feed — full narrative history grouped by day, filterable, live
+e2899f4 Phase 1: The Pulse home — needs-you banner, activity feed, decision peek
+e9f4cec Add OS kernel (event bus, jobs, guarded actions) + browser bridge and UI foundation
+d21eeb1 feat: initialize Campaign OS foundation with SvelteKit project structure
+d5047f7 feat: 18-agent multi-agent system for Hyperbolic Time Chamber
+ab21db9 Add MIT License file
+66d7f2d Add README.md to provide project overview and setup instructions
+396fb5b Add initial set of documentation files for public repository release

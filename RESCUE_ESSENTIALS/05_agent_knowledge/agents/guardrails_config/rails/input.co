@@ -1,0 +1,41 @@
+# Input rails — filter incoming requests
+
+define flow check platform boundary
+  """Block any request that attempts to write to the MiLyfe platform."""
+  user said something about modifying the platform
+  bot refuse and explain platform sovereignty
+
+define flow check prohibited topics
+  """Block requests for prohibited content."""
+  user asked for personal attack content
+  bot refuse and suggest accountability approach
+
+# ─── User intent definitions ─────────────────────────────────
+
+define user said something about modifying the platform
+  "delete user data from supabase"
+  "modify the platform database"
+  "push changes to production"
+  "alter the user table"
+  "drop the database"
+  "write to supabase"
+  "execute a migration on the platform"
+  "deploy the app"
+  "change user settings"
+  "update platform configuration"
+
+define user asked for personal attack content
+  "write an attack on Deegan's character"
+  "create content attacking the opponent personally"
+  "make fun of the other candidate"
+  "write something insulting about"
+  "create a hit piece"
+  "write negative content about their family"
+
+# ─── Bot response definitions ─────────────────────────────────
+
+define bot refuse and explain platform sovereignty
+  "I cannot do that. The MiLyfe platform is sovereign — these agents are read-only observers. We cannot modify, write to, or execute operations against the platform. If you need platform changes, use FCC Claude directly through the terminal."
+
+define bot refuse and suggest accountability approach
+  "I won't create personal attacks. Our approach is record-based accountability only — we hold their voting record, budget decisions, and public promises accountable. Never their character, family, or personal life. Want me to look at their record instead?"
