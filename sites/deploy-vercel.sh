@@ -32,11 +32,22 @@ if ! command -v vercel >/dev/null 2>&1; then
   npm i -g vercel
 fi
 
+# Optional: export VERCEL_TOKEN=xxx to skip interactive login entirely.
+# (Create one in phone browser: vercel.com → Account Settings → Tokens.)
+TOKEN_ARGS=()
+if [ -n "${VERCEL_TOKEN:-}" ]; then
+  TOKEN_ARGS=(--token="$VERCEL_TOKEN")
+fi
+
 echo ""
 echo "═══ Vercel login ═══"
-if ! vercel whoami >/dev/null 2>&1; then
-  echo "A login is needed. Enter your email at the prompt,"
-  echo "then tap the verification link Vercel emails you."
+if [ -n "${VERCEL_TOKEN:-}" ]; then
+  echo "Using VERCEL_TOKEN from environment."
+  vercel "${TOKEN_ARGS[@]}" whoami
+elif ! vercel whoami >/dev/null 2>&1; then
+  echo "A login is needed. Enter the EMAIL on your Vercel account"
+  echo "(the one tied to your GitHub) at the prompt, then tap the"
+  echo "verification link Vercel emails you."
   vercel login
   echo "Logged in as: $(vercel whoami)"
 else
@@ -53,11 +64,11 @@ deploy_site() {
   echo "═══ $PROJ ═══"
   cd "$SCRIPT_DIR/$SRC_DIR"
   echo "Uploading + deploying to production ..."
-  vercel --prod --yes --name "$PROJ"
+  vercel "${TOKEN_ARGS[@]}" --prod --yes --name "$PROJ"
 
   for d in "${DOMAINS[@]}"; do
     echo "Attaching domain $d ..."
-    vercel domains add "$d" 2>&1 | tail -n 3 || true
+    vercel "${TOKEN_ARGS[@]}" domains add "$d" 2>&1 | tail -n 3 || true
   done
 }
 
