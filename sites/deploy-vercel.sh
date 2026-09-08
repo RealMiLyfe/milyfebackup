@@ -68,7 +68,13 @@ deploy_site() {
 
   for d in "${DOMAINS[@]}"; do
     echo "Attaching domain $d ..."
-    vercel "${TOKEN_ARGS[@]}" domains add "$d" 2>&1 | tail -n 3 || true
+    # Subdomains (www.x, get.x) must be added WITH a project, else the
+    # CLI errors: "Only apex domains can be added without a project."
+    if [ "$(awk -F. '{print NF}' <<<"$d")" -gt 2 ]; then
+      vercel "${TOKEN_ARGS[@]}" domains add "$d" "$PROJ" 2>&1 | tail -n 3 || true
+    else
+      vercel "${TOKEN_ARGS[@]}" domains add "$d" 2>&1 | tail -n 3 || true
+    fi
   done
 }
 
