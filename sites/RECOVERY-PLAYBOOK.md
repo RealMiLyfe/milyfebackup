@@ -146,13 +146,25 @@ These all ran as containers on the dead PC behind the same tunnel:
 | `analytics.milyfe.fun` | Umami stats | VPS, easily recreated |
 | Time Chamber | Whole HTC stack | New PC/VPS + secrets + DBs |
 
-**Critical question:** the rescue backup says secrets/databases were excluded
-from git and meant to go into an encrypted archive
-(`SENSITIVE_secrets_and_databases.tar.gz.gpg`). If you have that file
-**anywhere** (USB stick, Google Drive, email to yourself, another machine)
-— the API/blog/email backends can be rebuilt with their data. If not, we
-rebuild them fresh and start counters/lists over. Either way the two
-public sites above come back regardless.
+**Confirmed Sep 8, 2026: the secrets/database archive is gone with the PC.**
+There is no encrypted copy anywhere. Consequences:
+
+- Petition signatures, volunteer list, email list, blog posts, analytics
+  history: **lost**. Counters restart at 0.
+- Until a new backend exists, all site forms use a **one-tap email
+  fallback** (`contact@milyfe.fun`, pre-filled) — nothing from visitors
+  gets lost going forward.
+- Fresh-rebuild plan (needs a VPS or new PC, not phone-work):
+  1. Tiny VPS ($4–6/mo) or new machine + Docker.
+  2. Rebuild `campaign-api` from `milyfe-platform` + HTC sources in this
+     backup; fresh SQLite/Postgres; new Listmonk + Umami + Ghost.
+  3. New Cloudflare Tunnel (or plain Nginx + Cloudflare proxy) for
+     `campaign-api / list / analytics / blog` subdomains.
+  4. Point the rebuilt `campaign.js` API_BASE at the new backend, redeploy
+     `mijaxx-site` via `deploy-termux.sh`.
+
+Either way, the two public sites above come back regardless — that part
+needs no secrets at all.
 
 ---
 

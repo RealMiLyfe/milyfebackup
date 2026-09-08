@@ -55,7 +55,13 @@
         }
       })
       .catch(function () {
-        showError(error, "Could not connect. Please try again later.");
+        showHtml(error, mailtoFallback("Petition signature", [
+          "Name: " + data.signer_name,
+          "Address: " + data.address,
+          "Neighborhood: " + data.neighborhood,
+          "Email: " + data.email,
+          "Registered voter: " + (data.registered_voter ? "yes" : "no/unknown"),
+        ]));
       })
       .finally(function () {
         btn.disabled = false;
@@ -112,7 +118,12 @@
         }
       })
       .catch(function () {
-        showError(error, "Could not connect. Please try again later.");
+        showHtml(error, mailtoFallback("Volunteer signup", [
+          "Name: " + name.trim(),
+          "Email: " + email.trim(),
+          "Neighborhood: " + neighborhood.trim(),
+          "Skills: " + skills.join(", "),
+        ]));
       })
       .finally(function () {
         btn.disabled = false;
@@ -147,7 +158,11 @@
         showSuccess(success, "You're in! Check your inbox for updates.");
       })
       .catch(function () {
-        showError(error, "Could not subscribe. Please try again.");
+        showHtml(error, mailtoFallback("Email subscribe", [
+          "Name: " + name.trim(),
+          "Email: " + email.trim(),
+          "Please add me to campaign updates.",
+        ]));
       })
       .finally(function () {
         btn.disabled = false;
@@ -180,7 +195,8 @@
         if (remaining) remaining.textContent = data.remaining + " signatures remaining";
       })
       .catch(function () {
-        counter.textContent = "—";
+        counter.textContent = "rebuilding";
+        if (remaining) remaining.textContent = "live counter returning soon — signatures via email still count";
       });
   }
 
@@ -249,6 +265,29 @@
       .catch(function () {
         feed.innerHTML = '<p class="text-muted">Follow us on <a href="https://mastodon.social/@milyfe" target="_blank" rel="noopener">Mastodon</a></p>';
       });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // OFFLINE FALLBACK (Sep 2026 rebuild — API server lost with old PC)
+  // If the campaign API is unreachable, hand the visitor a one-tap
+  // email fallback with their data pre-filled, so nothing is lost.
+  // ═══════════════════════════════════════════════════════════════
+  var FALLBACK_EMAIL = "contact@milyfe.fun";
+
+  function mailtoFallback(kind, lines) {
+    var subject = encodeURIComponent("[mijaxx.fun] " + kind + " (website fallback)");
+    var body = encodeURIComponent(lines.join("\n"));
+    return (
+      "Our system is being rebuilt, so this didn't send automatically. " +
+      "Tap to finish via email — everything is pre-filled: " +
+      '<a href="mailto:' + FALLBACK_EMAIL + "?subject=" + subject + "&body=" + body + '">send via email</a>.'
+    );
+  }
+
+  function showHtml(el, html) {
+    if (!el) return;
+    el.innerHTML = html;
+    el.style.display = "block";
   }
 
   // ═══════════════════════════════════════════════════════════════
