@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Mayor MiLyfe — We The People — Jacksonville 2027">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f2447"/>
+      <stop offset="0.6" stop-color="#14315e"/>
+      <stop offset="1" stop-color="#1e4a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1020" cy="90" r="260" fill="#d9a441" opacity="0.16"/>
+  <circle cx="120" cy="560" r="220" fill="#5a8cdc" opacity="0.18"/>
+  <text x="80" y="180" font-family="Georgia, serif" font-style="italic" font-size="44" fill="#d9a441" letter-spacing="4">WE THE PEOPLE</text>
+  <text x="76" y="300" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="110" fill="#ffffff">Mayor MiLyfe</text>
+  <text x="80" y="380" font-family="Arial, Helvetica, sans-serif" font-size="46" fill="#dbe3f2">Jacksonville 2027 — A system that still works</text>
+  <text x="80" y="440" font-family="Arial, Helvetica, sans-serif" font-size="46" fill="#dbe3f2">after anyone leaves.</text>
+  <rect x="80" y="500" width="300" height="64" rx="32" fill="#d9a441"/>
+  <text x="230" y="543" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="32" fill="#0f2447" text-anchor="middle">mijaxx.fun</text>
+</svg>
