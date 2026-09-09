@@ -137,8 +137,10 @@ git add sites/ 2>/dev/null || true
 git -c user.name="milyfe-phone" -c user.email="phone@milyfe.fun" \
   commit -qm "Replace generic rebuild with real site files from workspace zip" \
   || echo "(nothing new to commit)"
-git push origin arena/01a07f01-milyfebackup \
-  || echo "NOTE: push failed (run 'gh auth login' once). Continuing to deploy anyway."
+# GIT_TERMINAL_PROMPT=0: fail fast instead of hanging on a Username prompt.
+# The GitHub backup is optional — the Vercel deploy below is what matters.
+GIT_TERMINAL_PROMPT=0 git push origin arena/01a07f01-milyfebackup \
+  || echo "NOTE: GitHub backup skipped (needs 'gh auth login'). Deploying anyway."
 
 echo ""
 echo "═══ Deploying REAL sites to Vercel ═══"

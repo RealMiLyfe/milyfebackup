@@ -58,7 +58,7 @@ h1, h2, h3, h4 { line-height: 1.2; margin-top: 0; }
 .site-header { background: #fff; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; padding-bottom: 0.7rem; }
 .brand { display: flex; align-items: center; gap: 0.7rem; text-decoration: none; }
-.brand-logo { width: 52px; height: 52px; flex: none; }
+.brand-logo { height: 46px; width: auto; max-width: 175px; flex: none; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
 .brand-name { font-weight: 700; font-size: 1.5rem; color: var(--navy-ink); letter-spacing: 0.01em; }
 .brand-tag { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
@@ -228,6 +228,7 @@ textarea { min-height: 130px; resize: vertical; }
 .site-footer { background: var(--navy-ink); color: #c9d3e8; }
 .site-footer .container { padding-top: 3rem; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2rem; padding-bottom: 2.5rem; }
+.footer-brand .brand-logo { background: #fff; border-radius: 8px; padding: 3px 8px; height: 38px; }
 .footer-brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: #fff; font-weight: 700; font-size: 1.3rem; margin-bottom: 0.8rem; }
 .site-footer h4 { color: #fff; margin-bottom: 0.8rem; font-size: 1rem; }
 .footer-links { list-style: none; margin: 0; padding: 0; }
